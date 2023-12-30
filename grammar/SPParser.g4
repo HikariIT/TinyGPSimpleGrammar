@@ -1,8 +1,7 @@
 parser grammar SPParser;
 options {tokenVocab=SPLexer;}
 
-program     : statement program EOF
-            | statement;
+program     : statementList EOF;
 
 block       : LBRACE statementList RBRACE;
 

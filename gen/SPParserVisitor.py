@@ -19,6 +19,11 @@ class SPParserVisitor(ParseTreeVisitor):
         return self.visitChildren(ctx)
 
 
+    # Visit a parse tree produced by SPParser#statementList.
+    def visitStatementList(self, ctx:SPParser.StatementListContext):
+        return self.visitChildren(ctx)
+
+
     # Visit a parse tree produced by SPParser#statement.
     def visitStatement(self, ctx:SPParser.StatementContext):
         return self.visitChildren(ctx)

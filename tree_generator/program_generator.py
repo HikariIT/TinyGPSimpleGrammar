@@ -1,4 +1,5 @@
 import random
+from copy import deepcopy
 
 
 def add_indent(multiline_string: str, indent: int):
@@ -48,6 +49,8 @@ def print_tree(x, flag, depth, is_last):
 
 class ASTNode:
     name = 'node'
+    parent: str
+    pos: int
 
 
 class Program(ASTNode):
@@ -84,6 +87,15 @@ class Expression(ASTNode):
         return "expression"
 
 
+class CastExpression(Expression):
+    def __init__(self, expression):
+        self.children = [expression]
+        self.type = random.choice(["int", "float"])
+
+    def __str__(self):
+        return self.type + "(" + str(self.children[0]) + ")"
+
+
 class BinaryOperation(Expression):
     def __init__(self, left, right, operator):
         self.children = [left, right]
@@ -100,7 +112,8 @@ class Loop(ASTNode):
         self.children = [condition, *statements]
 
     def __str__(self):
-        return "while (" + str(self.children[0]) + ") {\n" + add_indent('\n'.join([str(child) for child in self.children[1:]]), 1) + "\n}"
+        return "while (" + str(self.children[0]) + ") {\n" + add_indent(
+            '\n'.join([str(child) for child in self.children[1:]]), 1) + "\n}"
 
 
 class Conditional(ASTNode):
@@ -110,7 +123,8 @@ class Conditional(ASTNode):
         self.children = [condition, *statements]
 
     def __str__(self):
-        return "if (" + str(self.children[0]) + ") {\n" + add_indent('\n'.join([str(child) for child in self.children[1:]]), 1) + "\n}"
+        return "if (" + str(self.children[0]) + ") {\n" + add_indent(
+            '\n'.join([str(child) for child in self.children[1:]]), 1) + "\n}"
 
 
 class Read(ASTNode):
@@ -144,27 +158,28 @@ class Literal(ASTNode):
 
 
 class ProgramGenerator:
-
     initialized_variables = []
 
     def __init__(self):
         self.DEPTH = 0
-        self.MAX_DEPTH = 2
+        self.MAX_DEPTH = 3
         self.NO_IDENTIFIERS = 10
 
     def generate_expression(self, in_loop_or_conditional=False):
         self.DEPTH += 1
         if in_loop_or_conditional:
             expression_probabilities = {
-                BinaryOperation: 0.98,
+                BinaryOperation: 0.97,
+                CastExpression: 0.01,
                 Identifier: 0.01,
                 Literal: 0.01
             }
         else:
             expression_probabilities = {
                 BinaryOperation: 0.2,
-                Identifier: 0.4,
-                Literal: 0.4
+                CastExpression: 0.1,
+                Identifier: 0.35,
+                Literal: 0.35
             }
 
         if self.DEPTH >= self.MAX_DEPTH:
@@ -176,6 +191,7 @@ class ProgramGenerator:
         expression_type = random.choices(list(expression_probabilities.keys()), list(expression_probabilities.values()))[0]
         return_node = None
 
+
         if expression_type == BinaryOperation:
             return_node = BinaryOperation(self.generate_expression(), self.generate_expression(),
                                           random.choice(["+", "-", "*", "/", "<", "<=", ">", ">=", "==", "!="]))
@@ -183,6 +199,8 @@ class ProgramGenerator:
             return_node = Identifier(self.generate_identifier())
         elif expression_type == Literal:
             return_node = Literal(str(random.randint(-100, 100)))
+        elif expression_type == CastExpression:
+            return_node = CastExpression(self.generate_expression())
 
         self.DEPTH -= 1
         return return_node
@@ -232,7 +250,7 @@ class ProgramGenerator:
         return return_node
 
     def generate_statements(self):
-        no_statements = max(1, int(random.randint(1, 10)))
+        no_statements = max(1, int(random.randint(1, 5)))
         statements = []
 
         for _ in range(no_statements):
@@ -247,6 +265,114 @@ class ProgramGenerator:
 
 pg = ProgramGenerator()
 program = pg.generate_program()
-print(program)
+# print(program)
+# print_tree(program, [True] * 1000, 0, False)
 
-print_tree(program, [True] * 1000, 0, False)
+
+class GP:
+
+    pg = ProgramGenerator()
+
+    @staticmethod
+    def crossover(p_1, p_2):
+        p_1_copy = deepcopy(p_1)
+        p_2_copy = deepcopy(p_2)
+
+        node_1_parent = p_1_copy
+        random_node_1 = random.choice(p_1_copy.children)
+
+        while random.random() > 0.3:
+            if not hasattr(random_node_1, 'children') or len(random_node_1.children) == 0:
+                break
+            node_1_parent = random_node_1
+            random_node_1 = random.choice(random_node_1.children)
+
+        repetitions = 0
+
+        node_2_parent = p_2_copy
+        random_node_2 = random.choice(p_2_copy.children)
+        while type(random_node_2) != type(random_node_1):
+            repetitions += 1
+            random_node_2 = p_2_copy
+            while random.random() > 0.3:
+                if not hasattr(random_node_2, 'children') or len(random_node_2.children) == 0:
+                    break
+                node_2_parent = random_node_2
+                random_node_2 = random.choice(random_node_2.children)
+
+            if repetitions > 10:
+                print('Crossover failed')
+                return p_1_copy, p_2_copy
+
+        print('Crossover of {} and {}'.format(random_node_1, random_node_2))
+
+        # Swap the nodes
+        node_1_pos = node_1_parent.children.index(random_node_1)
+        node_2_pos = node_2_parent.children.index(random_node_2)
+
+        node_1_parent.children[node_1_pos] = random_node_2
+        node_2_parent.children[node_2_pos] = random_node_1
+
+        return p_1_copy, p_2_copy
+
+    @staticmethod
+    def mutate(program):
+        program_copy = deepcopy(program)
+        node_to_mutate = random.choice(program_copy.children)
+        node_to_mutate_parent = program_copy
+        while random.random() > 0.3:
+            if not hasattr(node_to_mutate, 'children') or len(node_to_mutate.children) == 0:
+                break
+            node_to_mutate_parent = node_to_mutate
+            node_to_mutate = random.choice(node_to_mutate.children)
+
+        node_to_mutate_index = node_to_mutate_parent.children.index(node_to_mutate)
+
+        print('Mutating {}'.format(node_to_mutate))
+        if type(node_to_mutate) == Assignment:
+            node_to_mutate_parent.children[node_to_mutate_index] = (
+                Assignment(Identifier(GP.pg.generate_new_identifier()), GP.pg.generate_expression()))
+        elif type(node_to_mutate) == Loop:
+            node_to_mutate_parent.children[node_to_mutate_index] = (
+                Loop(GP.pg.generate_expression(in_loop_or_conditional=True), GP.pg.generate_statements()))
+        elif type(node_to_mutate) == Conditional:
+            node_to_mutate_parent.children[node_to_mutate_index] = (
+                Conditional(GP.pg.generate_expression(in_loop_or_conditional=True), GP.pg.generate_statements()))
+        elif type(node_to_mutate) == Read:
+            node_to_mutate_parent.children[node_to_mutate_index] = (
+                Read(Identifier(GP.pg.generate_new_identifier())))
+        elif type(node_to_mutate) == Write:
+            node_to_mutate_parent.children[node_to_mutate_index] = (
+                Write(GP.pg.generate_expression()))
+        elif type(node_to_mutate) == Identifier:
+            node_to_mutate_parent.children[node_to_mutate_index] = (
+                Identifier(GP.pg.generate_identifier()))
+        elif type(node_to_mutate) == Literal:
+            node_to_mutate_parent.children[node_to_mutate_index] = (
+                Literal(str(random.randint(-100, 100))))
+        elif type(node_to_mutate) == BinaryOperation:
+            node_to_mutate_parent.children[node_to_mutate_index] = (
+                BinaryOperation(GP.pg.generate_expression(), GP.pg.generate_expression(),
+                                random.choice(["+", "-", "*", "/", "<", "<=", ">", ">=", "==", "!="])))
+
+        return program_copy
+
+
+program_1 = pg.generate_program()
+program_2 = pg.generate_program()
+
+"""
+print(program_1)
+print('------------------')
+print(program_2)
+child_1, child_2 = GP.crossover(program_1, program_2)
+print(child_1)
+print('------------------')
+print(child_2)
+
+"""
+
+print(program_1)
+print('------------------')
+mutated = GP.mutate(program_1)
+print(mutated)

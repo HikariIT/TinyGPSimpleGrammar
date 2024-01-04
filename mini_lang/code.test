@@ -1,14 +1,8 @@
-read(n);
-i = 1;
-
-f1 = 1;
-f2 = 1;
-while (i < n) {
-    write(f1);
-    temp = f1;
-    f1 = f2;
-    f2 = temp + f2;
-    i = i + 1;
+i_8 = -50;
+read(i_0);
+read(i_0);
+write(i_7);
+if (i_7) {
+	i_1 = i_8;
 }
-
-write(f1);
+write(i_7);

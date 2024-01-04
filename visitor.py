@@ -34,27 +34,17 @@ class InterpreterVisitor(SPParserVisitor):
     def visitAssignmentStatement(self, ctx: SPParser.AssignmentStatementContext):
         identifier = ctx.identifier().getText()
         value = self.visit(ctx.expression())
-        if not self.variable_memory.is_variable_declared(identifier):
-            self.variable_memory.declare_variable(identifier)
         self.variable_memory.assign_variable(identifier, value)
 
     def visitIfStatement(self, ctx: SPParser.IfStatementContext):
-        # check if there is an else statement
         if ctx.KW_ELSE():
-            # iterate through the conditions and statements without the last statement (which is the else statement)
-            for condition, statement in zip(ctx.expression(), ctx.statement()[:-1]):
-                if self.visit(condition):
-                    self.visit(statement)
-                    break
-
-                self.visit(ctx.statement()[-1])
-
+            if self.visit(ctx.expression()):
+                self.visit(ctx.statement(0))
+            else:
+                self.visit(ctx.statement(1))
         else:
-            # iterate through the conditions and statements
-            for condition, statement in zip(ctx.expression(), ctx.statement()):
-                if self.visit(condition):
-                    self.visit(statement)
-                    break
+            if self.visit(ctx.expression()):
+                self.visit(ctx.statement(0))
 
     def visitLoopStatement(self, ctx: SPParser.LoopStatementContext):
         while self.visit(ctx.expression()):
@@ -67,12 +57,16 @@ class InterpreterVisitor(SPParserVisitor):
         try:
             value = int(value)
         except ValueError:
-            value = float(value)
-        if not self.variable_memory.is_variable_declared(identifier):
-            self.variable_memory.declare_variable(identifier)
+            try:
+                value = float(value)
+            except ValueError:
+                value = 0
         self.variable_memory.assign_variable(identifier, value)
 
     def visitWrite(self, ctx: SPParser.WriteContext):
+        self.variable_memory.operation_count += 1
+        if self.variable_memory.operation_count > self.variable_memory.MAX_OPERATIONS:
+            raise RecursionError("Too many operations")
         self.logger.debug("Writing to file: " + ctx.expression().getText())
         value = self.visit(ctx.expression())
         self.out_file.write(str(value) + "\n")

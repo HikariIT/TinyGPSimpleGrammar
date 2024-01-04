@@ -10,6 +10,8 @@ class MetricType(Enum):
     FIRST_POSITION_789 = 5
     ONLY_1 = 6
     SUM_OF_TWO = 7
+    SMALL_OR_LARGE = 8
+    SUM_OF_SQUARES = 9
 
 
 class Metric:
@@ -31,6 +33,10 @@ class Metric:
                 return Metric.only_1()
             case MetricType.SUM_OF_TWO:
                 return Metric.sum_of_two()
+            case MetricType.SMALL_OR_LARGE:
+                return Metric.small_or_large()
+            case MetricType.SUM_OF_SQUARES:
+                return Metric.sum_of_squares()
             case _:
                 raise Exception("Invalid metric type")
 
@@ -133,7 +139,51 @@ class Metric:
         except ValueError:
             return 1000
 
+    @staticmethod
+    def small_or_large():
+        program_input = Metric.get_input_of_program()
+        num_1 = float(program_input.splitlines()[0])
+        output = Metric.get_output_from_program()
 
+        if len(output.splitlines()) == 0:
+            return 2000
+
+        if len(output.splitlines()) > 1:
+            return 1000
+
+        try:
+            output_value = float(output)
+            if num_1 < 1000 and math.isclose(-1, output_value):
+                return 0
+            if num_1 > 2000 and math.isclose(1, output_value):
+                return 0
+            return 10
+        except ValueError:
+            return 1000
+
+    @staticmethod
+    def sum_of_squares():
+        program_input = Metric.get_input_of_program()
+        num_1 = float(program_input.splitlines()[0])
+        num_2 = float(program_input.splitlines()[1])
+
+        sum_of_squares = num_1 ** 2 + num_2 ** 2
+
+        output = Metric.get_output_from_program()
+
+        if len(output.splitlines()) == 0:
+            return 2000
+
+        if len(output.splitlines()) > 1:
+            return 1000
+
+        try:
+            output_value = float(output)
+            if math.isclose(output_value, sum_of_squares):
+                return 0
+            return 10
+        except ValueError:
+            return 1000
 
     @staticmethod
     def get_input_of_program() -> str:

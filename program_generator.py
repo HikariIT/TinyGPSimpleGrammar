@@ -179,7 +179,7 @@ class ProgramGenerator:
 
     def __init__(self, identifiers: list[str]):
         self.DEPTH = 0
-        self.MAX_DEPTH = 3
+        self.MAX_DEPTH = 4
         self.identifiers = identifiers
 
     def generate_literal(self):
@@ -357,7 +357,7 @@ class GP:
 
     NO_IDENTIFIERS = 3
     MAX_GENERATIONS = 100
-    POPULATION_SIZE = 5000
+    POPULATION_SIZE = 2000
     CROSSOVER_PROBABILITY = 0.6
     MUTATION_PROBABILITY = 0.1
     TOURNAMENT_SIZE = 3
@@ -559,7 +559,7 @@ class GP:
 
         del visitor
 
-        return Metric.evaluate_using_metric(MetricType.ANY_POSITION_31415)
+        return Metric.evaluate_using_metric(MetricType.SUM_OF_SQUARES)
 
     def evolve(self):
         generation = 0
